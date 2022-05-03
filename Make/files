@@ -1,0 +1,3 @@
+variablesAdimV2022.C
+
+EXE = $(FOAM_USER_APPBIN)/variablesAdimV2022
