@@ -139,7 +139,7 @@ int main(int argc, char *argv[])
 
       IOobject UPrime2MeanHeader
       (
-            "UPrime2MeanHeader",
+            "UPrime2Mean",
             runTime.timeName(),
             mesh,
             IOobject::READ_IF_PRESENT
