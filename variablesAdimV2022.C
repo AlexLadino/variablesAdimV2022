@@ -43,6 +43,11 @@ int main(int argc, char *argv[])
     #include "createTimeControls.H"
     
 
+	dimensionedScalar uTau("uTau", dimensionSet( 0, 1, -1, 0, 0, 0, 0 ),0.654476306);
+	dimensionedScalar UBulk("UBulk", dimensionSet( 0, 1, -1, 0, 0, 0, 0 ),9.6144);
+
+
+
 	forAll(timeDirs, timeI)
       {
       runTime.setTime(timeDirs[timeI], timeI);
@@ -190,6 +195,11 @@ int main(int argc, char *argv[])
       );
 
 
+	  // const dimensionedScalar("uTau", dimensionSet(0,1,-1,0,0,0,0),0.654476306);
+
+
+
+
       if (dissipationTKEMeanHeader.typeHeaderOk<volScalarField>(true))
       {
             mesh.readUpdate();
@@ -208,7 +218,7 @@ int main(int argc, char *argv[])
                   IOobject::NO_READ
                   ),
 				  
-				  dissipationTKEMean/(pow(0.654476306,4)/nu)
+				  dissipationTKEMean/(pow(uTau,4)/nu)
             );
             dissipationTKEMeanAdimUTau.write();
       }
@@ -235,7 +245,7 @@ int main(int argc, char *argv[])
                   mesh,
                   IOobject::NO_READ
                   ),
-                  prodTKEMean/(pow(0.654476306,4)/nu)
+                  prodTKEMean/(pow(uTau,4)/nu)
             );
             prodTKEMeanAdimUTau.write();
       }
@@ -261,7 +271,7 @@ int main(int argc, char *argv[])
                   mesh,
                   IOobject::NO_READ
                   ),
-                  pressureDiffusionTKEMean/(pow(0.654476306,4)/nu)
+                  pressureDiffusionTKEMean/(pow(uTau,4)/nu)
             );
             pressureDiffusionTKEMeanAdimUTau.write();
       }
@@ -287,7 +297,7 @@ int main(int argc, char *argv[])
                   mesh,
                   IOobject::NO_READ
                   ),
-                  pressureStrainTKEMean/(pow(0.654476306,4)/nu)
+                  pressureStrainTKEMean/(pow(uTau,4)/nu)
             );
             pressureStrainTKEMeanAdimUTau.write();
       }
@@ -313,7 +323,7 @@ int main(int argc, char *argv[])
                   mesh,
                   IOobject::NO_READ
                   ),
-                  prodTKEMean/(pow(0.654476306,4)/nu)
+                  prodTKEMean/(pow(uTau,4)/nu)
             );
             prodTKEMeanAdimUTau.write();
       }
@@ -339,7 +349,7 @@ int main(int argc, char *argv[])
                   mesh,
                   IOobject::NO_READ
                   ),
-                  turbulenceTransportTKEMean/(pow(0.654476306,4)/nu)
+                  turbulenceTransportTKEMean/(pow(uTau,4)/nu)
             );
             turbulenceTransportTKEMeanAdimUTau.write();
       }
@@ -365,7 +375,7 @@ int main(int argc, char *argv[])
                   mesh,
                   IOobject::NO_READ
                   ),
-                  viscousDiffusionTKEMean/(pow(0.654476306,4)/nu)
+                  viscousDiffusionTKEMean/(pow(uTau,4)/nu)
             );
             viscousDiffusionTKEMeanAdimUTau.write();
       }
@@ -392,7 +402,7 @@ int main(int argc, char *argv[])
                   mesh,
                   IOobject::NO_READ
                   ),
-                  UMean/9.6144
+                  UMean/UBulk
             );
             UMeanAdimUBulk.write();
       }
@@ -419,8 +429,10 @@ int main(int argc, char *argv[])
                   mesh,
                   IOobject::NO_READ
                   ),
-                  0.5*tr(RMean)/pow(9.6144,2)
-            );
+				  mesh,
+				  dimensionedScalar("kAdimUBulk", dimless,0.0)                  
+            );			
+			kAdimUBulk = 0.5*tr(RMean)/pow(UBulk,2);			
             kAdimUBulk.write();
             
             Info<< "    Calculating turbulenceIntensity" << endl;
@@ -433,15 +445,18 @@ int main(int argc, char *argv[])
                   mesh,
                   IOobject::NO_READ
                   ),
-                  pow((2/3*0.5*tr(RMean)),0.5)/9.6144
+                  mesh,
+				  dimensionedScalar("turbulenceIntensity", dimless,0.0)                  			  
             );
+			
+			turbulenceIntensity = pow((2*0.5/3)*tr(RMean),0.5)/UBulk;			
             turbulenceIntensity.write();
 			
             Info<< "    Calculating URMSAdimUBulk " << endl;
-			volScalarField RMeanxx(RMean.component(symmTensor::XX));
-			volScalarField RMeanyy(RMean.component(symmTensor::YY));			
-			volScalarField RMeanzz(RMean.component(symmTensor::ZZ));
-			
+			volScalarField RMeanxx(pow(RMean.component(symmTensor::XX),0.5)/UBulk);
+			volScalarField RMeanyy(pow(RMean.component(symmTensor::YY),0.5)/UBulk);			
+			volScalarField RMeanzz(pow(RMean.component(symmTensor::ZZ),0.5)/UBulk);
+		
             volVectorField URMSAdimUBulk
             (
 				IOobject
@@ -455,14 +470,17 @@ int main(int argc, char *argv[])
 				dimensionedVector
 				(
 					"URMSAdimUBulk", 
-					dimVelocity, 
+					dimless, 
 					vector(0.0,0.0,0.0)
 				)	  
-            );
-			URMSAdimUBulk.component(0) =  pow(RMeanxx,0.5)/9.6144;
-			URMSAdimUBulk.component(1) =  pow(RMeanyy,0.5)/9.6144;
-			URMSAdimUBulk.component(2) =  pow(RMeanzz,0.5)/9.6144;			
-			
+            );	
+
+			forAll(URMSAdimUBulk, cellI)
+			{
+			URMSAdimUBulk[cellI].x()=RMeanxx[cellI];
+			URMSAdimUBulk[cellI].y()=RMeanyy[cellI];
+			URMSAdimUBulk[cellI].z()=RMeanzz[cellI];
+			}					
             URMSAdimUBulk.write();						
       }
       else
@@ -488,8 +506,10 @@ int main(int argc, char *argv[])
                   mesh,
                   IOobject::NO_READ
                   ),
-                  0.5*tr(UPrime2Mean)/pow(9.6144,2)
-            );
+				  mesh,
+				  dimensionedScalar("kAdimUBulk", dimless,0.0)                  
+            );			
+			kAdimUBulk = 0.5*tr(UPrime2Mean)/pow(UBulk,2);			
             kAdimUBulk.write();
             
             Info<< "    Calculating turbulenceIntensity" << endl;
@@ -502,15 +522,18 @@ int main(int argc, char *argv[])
                   mesh,
                   IOobject::NO_READ
                   ),
-                  pow((2/3*0.5*tr(UPrime2Mean)),0.5)/9.6144
+                  mesh,
+				  dimensionedScalar("turbulenceIntensity", dimless,0.0)                  			  
             );
+			
+			turbulenceIntensity = pow((2*0.5/3)*tr(UPrime2Mean),0.5)/UBulk;			
             turbulenceIntensity.write();
 			
             Info<< "    Calculating URMSAdimUBulk " << endl;
-			volScalarField UPrime2Meanxx(UPrime2Mean.component(symmTensor::XX));
-			volScalarField UPrime2Meanyy(UPrime2Mean.component(symmTensor::YY));			
-			volScalarField UPrime2Meanzz(UPrime2Mean.component(symmTensor::ZZ));
-			
+			volScalarField UPrime2Meanxx(pow(UPrime2Mean.component(symmTensor::XX),0.5)/UBulk);
+			volScalarField UPrime2Meanyy(pow(UPrime2Mean.component(symmTensor::YY),0.5)/UBulk);			
+			volScalarField UPrime2Meanzz(pow(UPrime2Mean.component(symmTensor::ZZ),0.5)/UBulk);
+		
             volVectorField URMSAdimUBulk
             (
 				IOobject
@@ -524,15 +547,18 @@ int main(int argc, char *argv[])
 				dimensionedVector
 				(
 					"URMSAdimUBulk", 
-					dimVelocity, 
+					dimless, 
 					vector(0.0,0.0,0.0)
 				)	  
-            );
-			URMSAdimUBulk.component(0) =  pow(UPrime2Meanxx,0.5)/9.6144;
-			URMSAdimUBulk.component(1) =  pow(UPrime2Meanyy,0.5)/9.6144;
-			URMSAdimUBulk.component(2) =  pow(UPrime2Meanzz,0.5)/9.6144;			
-			
-            URMSAdimUBulk.write();						
+            );	
+
+			forAll(URMSAdimUBulk, cellI)
+			{
+			URMSAdimUBulk[cellI].x()=UPrime2Meanxx[cellI];
+			URMSAdimUBulk[cellI].y()=UPrime2Meanyy[cellI];
+			URMSAdimUBulk[cellI].z()=UPrime2Meanzz[cellI];
+			}					
+            URMSAdimUBulk.write();					
       }
       else
       {
